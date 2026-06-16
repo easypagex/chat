@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EasyPageX — WhatsApp Chat</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    background: #111b21;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+  }
+
+  .phone-wrap {
+    width: 100%;
+    max-width: 400px;
+    background: #111b21;
+    border-radius: 40px;
+    box-shadow: 0 0 0 10px #1a1a1a, 0 40px 80px rgba(0,0,0,0.8);
+    overflow: hidden;
+    border: 2px solid #222;
+  }
+
+  /* Status bar */
+  .status-bar {
+    background: #1f2c34;
+    padding: 8px 20px 4px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    color: #aaa;
+  }
+  .status-bar .time { font-weight: 600; color: #fff; font-size: 13px; }
+  .status-icons { display: flex; gap: 6px; align-items: center; }
+  .signal { display: flex; gap: 2px; align-items: flex-end; }
+  .signal span { background: #fff; border-radius: 1px; width: 3px; }
+  .signal span:nth-child(1) { height: 4px; }
+  .signal span:nth-child(2) { height: 6px; }
+  .signal span:nth-child(3) { height: 8px; }
+  .signal span:nth-child(4) { height: 10px; }
+
+  /* WhatsApp header */
+  .wa-header {
+    background: #1f2c34;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid #2a3942;
+  }
+  .back-arrow { color: #00a884; font-size: 20px; cursor: pointer; }
+  .avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: linear-gradient(135deg, #00a884, #00856f);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+  }
+  .contact-info { flex: 1; }
+  .contact-name { color: #e9edef; font-size: 16px; font-weight: 600; }
+  .contact-status { color: #8696a0; font-size: 12px; }
+  .header-icons { display: flex; gap: 16px; color: #aebac1; font-size: 18px; }
+
+  /* Chat background */
+  .chat-bg {
+    background: #0b141a;
+    background-image:
+      url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23182229' fill-opacity='0.6'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    min-height: 500px;
+    max-height: 600px;
+    overflow-y: auto;
+    padding: 12px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    scroll-behavior: smooth;
+  }
+
+  .chat-bg::-webkit-scrollbar { width: 4px; }
+  .chat-bg::-webkit-scrollbar-thumb { background: #2a3942; border-radius: 4px; }
+
+  /* Date divider */
+  .date-divider {
+    text-align: center;
+    margin: 8px 0;
+  }
+  .date-divider span {
+    background: #182229;
+    color: #8696a0;
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 8px;
+    border: 1px solid #2a3942;
+  }
+
+  /* Messages */
+  .msg-row {
+    display: flex;
+    margin: 2px 0;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+  }
+  .msg-row.visible { opacity: 1; transform: translateY(0); }
+  .msg-row.incoming { justify-content: flex-start; }
+  .msg-row.outgoing { justify-content: flex-end; }
+
+  .bubble {
+    max-width: 78%;
+    padding: 7px 10px 18px;
+    border-radius: 8px;
+    font-size: 14px;
+    line-height: 1.45;
+    position: relative;
+    word-wrap: break-word;
+  }
+  .incoming .bubble {
+    background: #202c33;
+    color: #e9edef;
+    border-top-left-radius: 2px;
+  }
+  .outgoing .bubble {
+    background: #005c4b;
+    color: #e9edef;
+    border-top-right-radius: 2px;
+  }
+
+  /* Tail */
+  .incoming .bubble::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -8px;
+    border: 8px solid transparent;
+    border-top-color: #202c33;
+    border-right: 0;
+    border-left: 0;
+  }
+  .outgoing .bubble::after {
+    content: '';
+    position: absolute;
+    top: 0; right: -8px;
+    border: 8px solid transparent;
+    border-top-color: #005c4b;
+    border-right: 0;
+    border-left: 0;
+  }
+
+  .msg-time {
+    position: absolute;
+    bottom: 4px; right: 8px;
+    font-size: 10px;
+    color: #8696a0;
+    display: flex; align-items: center; gap: 2px;
+  }
+  .outgoing .msg-time { color: #8696a0; }
+  .checkmarks { color: #53bdeb; font-size: 11px; }
+
+  /* Typing indicator */
+  .typing-row {
+    display: flex;
+    justify-content: flex-start;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    margin: 2px 0;
+  }
+  .typing-row.visible { opacity: 1; }
+  .typing-bubble {
+    background: #202c33;
+    border-radius: 8px;
+    border-top-left-radius: 2px;
+    padding: 10px 14px;
+    display: flex; gap: 4px; align-items: center;
+  }
+  .typing-bubble span {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #8696a0;
+    animation: bounce 1.2s infinite;
+  }
+  .typing-bubble span:nth-child(2) { animation-delay: 0.2s; }
+  .typing-bubble span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+    30% { transform: translateY(-5px); opacity: 1; }
+  }
+
+  /* Emoji / rich message support */
+  .msg-text .highlight { color: #53bdeb; font-weight: 600; }
+  .msg-text .stat {
+    background: #00a884;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 4px;
+    margin: 0 2px;
+  }
+
+  /* Final CTA card */
+  .cta-card {
+    background: #202c33;
+    border-radius: 10px;
+    overflow: hidden;
+    max-width: 78%;
+    cursor: pointer;
+    border: 1px solid #2a3942;
+    transition: transform 0.2s;
+  }
+  .cta-card:hover { transform: scale(1.02); }
+  .cta-card-header {
+    background: linear-gradient(135deg, #00a884, #00856f);
+    padding: 14px 16px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .cta-card-header .logo-icon { font-size: 26px; }
+  .cta-card-title { color: #fff; font-weight: 700; font-size: 14px; }
+  .cta-card-sub { color: rgba(255,255,255,0.8); font-size: 11px; }
+  .cta-card-body { padding: 10px 14px 14px; }
+  .cta-card-body p { color: #e9edef; font-size: 13px; line-height: 1.4; margin-bottom: 10px; }
+  .cta-btn {
+    display: block;
+    background: #00a884;
+    color: #fff;
+    text-align: center;
+    padding: 9px;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 13px;
+    text-decoration: none;
+    transition: background 0.2s;
+  }
+  .cta-btn:hover { background: #00856f; }
+
+  .cta-row {
+    display: flex;
+    justify-content: flex-start;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.4s ease, transform 0.4s ease;
+    margin: 2px 0;
+  }
+  .cta-row.visible { opacity: 1; transform: translateY(0); }
+
+  /* Input bar */
+  .input-bar {
+    background: #1f2c34;
+    padding: 8px 12px;
+    display: flex; align-items: center; gap: 10px;
+    border-top: 1px solid #2a3942;
+  }
+  .input-box {
+    flex: 1; background: #2a3942; border: none; border-radius: 20px;
+    padding: 10px 14px; color: #e9edef; font-size: 14px; outline: none;
+  }
+  .input-box::placeholder { color: #8696a0; }
+  .send-btn {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: #00a884; border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 18px; flex-shrink: 0;
+  }
+  .mic-icon { color: #8696a0; font-size: 20px; }
+
+  /* Replay button */
+  .replay-wrap {
+    text-align: center;
+    padding: 12px;
+    background: #0b141a;
+  }
+  .replay-btn {
+    background: transparent;
+    border: 1px solid #00a884;
+    color: #00a884;
+    padding: 8px 24px;
+    border-radius: 20px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .replay-btn:hover { background: rgba(0,168,132,0.1); }
+</style>
+</head>
+<body>
+
+<div class="phone-wrap">
+
+  <!-- Status Bar -->
+  <div class="status-bar">
+    <span class="time" id="clock">9:41</span>
+    <div class="status-icons">
+      <div class="signal">
+        <span></span><span></span><span></span><span></span>
+      </div>
+      <span>WiFi</span>
+      <span>🔋</span>
+    </div>
+  </div>
+
+  <!-- WhatsApp Header -->
+  <div class="wa-header">
+    <div class="back-arrow">‹</div>
+    <div class="avatar">📄</div>
+    <div class="contact-info">
+      <div class="contact-name">EasyPageX</div>
+      <div class="contact-status" id="contact-status">online</div>
+    </div>
+    <div class="header-icons">
+      <span>📹</span>
+      <span>📞</span>
+      <span>⋮</span>
+    </div>
+  </div>
+
+  <!-- Chat Area -->
+  <div class="chat-bg" id="chat">
+    <div class="date-divider"><span>Today</span></div>
+    <!-- Messages injected by JS -->
+  </div>
+
+  <!-- Input Bar -->
+  <div class="input-bar">
+    <span style="color:#8696a0;font-size:20px;">😊</span>
+    <input class="input-box" type="text" placeholder="Message" readonly>
+    <span class="mic-icon">🎤</span>
+    <button class="send-btn">➤</button>
+  </div>
+
+  <!-- Replay -->
+  <div class="replay-wrap">
+    <button class="replay-btn" onclick="startChat()">▶ Replay conversation</button>
+  </div>
+
+</div>
+
+<script>
+const chat = document.getElementById('chat');
+const statusEl = document.getElementById('contact-status');
+
+// Real clock
+function updateClock() {
+  const now = new Date();
+  let h = now.getHours(), m = now.getMinutes();
+  document.getElementById('clock').textContent =
+    `${h}:${String(m).padStart(2,'0')}`;
+}
+updateClock();
+setInterval(updateClock, 30000);
+
+function getTime() {
+  const now = new Date();
+  return `${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
+}
+
+// Conversation script
+const script = [
+  { from: 'out', text: 'Hey! I saw EasyPageX on Instagram. What exactly do you do? 🤔', delay: 800 },
+  { from: 'in',  text: 'Hi there! 👋 Great to hear from you. At *EasyPageX* we build dedicated landing pages for small businesses — pages that work 24/7 to capture leads and turn visitors into loyal customers 💰', delay: 2200 },
+  { from: 'out', text: 'Interesting… but I already have a website. Why would I need a separate landing page?', delay: 1800 },
+  { from: 'in',  text: 'Great question! Your website has too many choices for visitors. A landing page has *one clear goal* — so people know exactly what to do next. That\'s why landing pages convert up to <span class="stat">5× more</span> than a generic homepage 📈', delay: 2800 },
+  { from: 'out', text: 'Wow, 5x more?! How does that work exactly?', delay: 1500 },
+  { from: 'in',  text: 'We send traffic from ads, social media & Google directly to a page built to convert. One message, one action, no distractions ✅\n\nWe also crosslink your Instagram, X & LinkedIn so every visitor can become a follower — growing your community 24/7 📱', delay: 3000 },
+  { from: 'out', text: 'And what about leads? I struggle to capture emails from people who visit.', delay: 1800 },
+  { from: 'in',  text: 'That\'s *exactly* what we solve 🎯 Did you know <span class="stat">96%</span> of visitors don\'t buy on their first visit? Your landing page captures their email so you can follow up and win them back. No lead left behind!', delay: 2500 },
+  { from: 'out', text: 'OK I\'m curious. How long does it take and what\'s the process?', delay: 1600 },
+  { from: 'in',  text: 'Super simple — just 4 steps:\n\n1️⃣ *Tell us your vision* — share your product & goal\n2️⃣ *We design your page* — custom, mobile-first\n3️⃣ *You review & approve* — tweaks included\n4️⃣ *Launch & grow* — customers from day one 🚀', delay: 3200 },
+  { from: 'out', text: 'That sounds really easy! Does it work for any type of business?', delay: 1500 },
+  { from: 'in',  text: 'Absolutely! We\'ve built pages for yoga studios, pet grooming, surf schools, restaurants, florists, event venues and much more 🌍 If you have customers to reach, we can build your page.', delay: 2600 },
+  { from: 'out', text: 'Great. Where can I see more and get started? 😊', delay: 1400 },
+  { from: 'cta', delay: 2000 },
+];
+
+let timeouts = [];
+
+function clearAll() {
+  timeouts.forEach(clearTimeout);
+  timeouts = [];
+  chat.querySelectorAll('.msg-row, .typing-row, .cta-row').forEach(el => el.remove());
+}
+
+function scrollDown() {
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function addTyping() {
+  const row = document.createElement('div');
+  row.className = 'typing-row';
+  row.innerHTML = `<div class="typing-bubble"><span></span><span></span><span></span></div>`;
+  chat.appendChild(row);
+  scrollDown();
+  setTimeout(() => row.classList.add('visible'), 50);
+  return row;
+}
+
+function removeTyping(el) {
+  el.classList.remove('visible');
+  setTimeout(() => el.remove(), 300);
+}
+
+function addMessage(from, html) {
+  const row = document.createElement('div');
+  row.className = `msg-row ${from === 'out' ? 'outgoing' : 'incoming'}`;
+  const checks = from === 'out' ? `<span class="checkmarks">✓✓</span>` : '';
+  // Convert *bold* markdown
+  const formatted = html
+    .replace(/\*(.*?)\*/g, '<strong>$1</strong>')
+    .replace(/\n/g, '<br>');
+  row.innerHTML = `
+    <div class="bubble">
+      <div class="msg-text">${formatted}</div>
+      <div class="msg-time">${getTime()} ${checks}</div>
+    </div>`;
+  chat.appendChild(row);
+  scrollDown();
+  setTimeout(() => row.classList.add('visible'), 50);
+}
+
+function addCTA() {
+  const row = document.createElement('div');
+  row.className = 'cta-row';
+  row.innerHTML = `
+    <div class="cta-card">
+      <div class="cta-card-header">
+        <div class="logo-icon">📄</div>
+        <div>
+          <div class="cta-card-title">EasyPageX</div>
+          <div class="cta-card-sub">Landing Pages That Drive Sales</div>
+        </div>
+      </div>
+      <div class="cta-card-body">
+        <p>Your best salesperson, working 24/7. Get a custom landing page and start getting results from day one 🔥</p>
+        <a class="cta-btn" href="https://easypagex.github.io/lpus/" target="_blank">🚀 Launch My Page Today</a>
+      </div>
+    </div>`;
+  chat.appendChild(row);
+  scrollDown();
+  setTimeout(() => row.classList.add('visible'), 50);
+}
+
+function startChat() {
+  clearAll();
+  statusEl.textContent = 'online';
+
+  let cumDelay = 600;
+
+  script.forEach((item, i) => {
+    const isIn = item.from === 'in' || item.from === 'cta';
+    const typingDuration = isIn ? Math.min(item.text ? item.text.length * 18 : 1200, 2400) : 0;
+
+    if (isIn) {
+      // Show typing indicator
+      const t1 = setTimeout(() => {
+        statusEl.textContent = 'typing…';
+        const typingEl = addTyping();
+
+        const t2 = setTimeout(() => {
+          removeTyping(typingEl);
+          statusEl.textContent = 'online';
+          if (item.from === 'cta') {
+            addCTA();
+          } else {
+            addMessage('in', item.text);
+          }
+        }, typingDuration);
+        timeouts.push(t2);
+      }, cumDelay);
+      timeouts.push(t1);
+    } else {
+      const t = setTimeout(() => {
+        addMessage('out', item.text);
+      }, cumDelay);
+      timeouts.push(t);
+    }
+
+    cumDelay += (item.delay || 1500) + (isIn ? typingDuration : 0);
+  });
+}
+
+// Auto-start
+startChat();
+</script>
+</body>
+</html>
